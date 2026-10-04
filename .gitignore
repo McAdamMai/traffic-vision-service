@@ -4,8 +4,6 @@ __pycache__/
 venv/
 .env
 *.engine
-weights/
-runs/
 raw_data/
 *.mp4
 *.avi
