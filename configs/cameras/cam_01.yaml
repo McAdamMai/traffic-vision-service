@@ -1,0 +1,14 @@
+camera_id: cam_01
+stream_fps: 30
+traffic_light_rois:
+- - [324, 214]
+  - [345, 216]
+  - [344, 226]
+  - [324, 223]
+stop_line:
+- [38, 487]
+- [347, 489]
+restricted_zones: {}
+stop_line_direction: "NORTH"
+no_parking_zones: {}
+speed_zones: {}

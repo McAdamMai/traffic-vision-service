@@ -1,0 +1,13 @@
+cat << 'EOF' > .gitignore
+__pycache__/
+*.pyc
+venv/
+.env
+*.engine
+weights/
+runs/
+raw_data/
+*.mp4
+*.avi
+*.jpg
+EOF
