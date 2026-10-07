@@ -42,12 +42,17 @@ def test_rules_from_json(config_input: str | Path, json_input: str | Path):
     with open(config_path, "r", encoding="utf-8") as f:
         camera_config = yaml.safe_load(f)
 
+    # 1. Initialize engine with spatial zones for parking/restricted checks
     rule_engine = TrafficRuleEngine(
         stop_line=camera_config.get("stop_line"),
         stop_line_direction=camera_config.get("stop_line_direction"),
+        restricted_zones=camera_config.get("restricted_zones"),
+        no_parking_zones=camera_config.get("no_parking_zones")
     )
 
-    violating_cars = set()
+    # Track by (violation_type, car_id) so we don't spam the console, 
+    # but still catch distinct violations for the same car
+    reported_violations = set()
     frame_count = 0
 
     with open(json_path, "r", encoding="utf-8") as f:
@@ -58,33 +63,44 @@ def test_rules_from_json(config_input: str | Path, json_input: str | Path):
             frame_data = json.loads(line)
             frame_count += 1
 
+            # 2. Extract vehicles, signs, and light state
             vehicles = frame_data.get("telemetry", {}).get("vehicles", [])
+            signs = frame_data.get("telemetry", {}).get("signs", [])
             light_state = frame_data.get("traffic_light_state")
             timestamp = frame_data.get("timestamp")
 
+            # 3. Evaluate rules (now passing detected_signs)
             violations = rule_engine.check_violations(
                 tracked_vehicles=vehicles,
                 light_state=light_state,
                 timestamp=timestamp,
+                detected_signs=signs
             )
 
             for v in violations:
+                violation_type = v["type"]
                 car_number = v["track_id"]
+                violation_key = (violation_type, car_number)
 
-                # Only print the payload the first time this specific car crosses
-                if car_number not in violating_cars:
-                    violating_cars.add(car_number)
-                    print(f"🚨 VIOLATION: {v['type']}")
+                # Only print the payload the first time this specific violation occurs for this car
+                if violation_key not in reported_violations:
+                    reported_violations.add(violation_key)
+                    print(f"🚨 VIOLATION: {violation_type}")
                     print(f"   Car Number: #{car_number} ({v['class_name']})")
                     print(f"   Time:       {v['timestamp']}")
                     print("-" * 50)
 
-    print(f"\nFinished parsing {frame_count} frames.")
+    print(f"\nFinished parsing {frame_count} frames.\n" + "=" * 50)
 
-    if violating_cars:
-        print(f"Violating Car Numbers: {sorted(list(violating_cars))}")
+    # 4. Generate summary report of [Type + Car ID]
+    if reported_violations:
+        print("Summary of Violations:")
+        # Sort alphabetically by violation type, then numerically by car ID
+        sorted_violations = sorted(list(reported_violations), key=lambda x: (x[0], x[1]))
+        for v_type, c_id in sorted_violations:
+            print(f"  - {v_type} | Car #{c_id}")
     else:
-        print("Violating Car Numbers: None")
+        print("Violations Detected: None")
 
 
 if __name__ == "__main__":
